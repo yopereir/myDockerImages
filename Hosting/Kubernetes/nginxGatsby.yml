@@ -1,0 +1,53 @@
+# NOTE: set hostPath to your gatsby public dir, then deploy.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+  name: my-ngix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: my-nginx
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        run: my-nginx
+    spec:
+      containers:
+      - env:
+        - name: APACHE_SERVER_NAME
+          value: billygraham.org.localhost
+        image: casuallee/nginx
+        name: mygatsbydeployment
+        volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: webserver-app
+        ports:
+          - containerPort: 80
+      restartPolicy: Always
+      volumes:
+      - name: webserver-app
+        hostPath:
+          path: /host/public
+          type: DirectoryOrCreate
+status: {}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: nginx-gatsby
+spec:
+  ports:
+    - name: web
+      port: 6969
+      targetPort: 80
+      protocol: TCP
+  selector:
+    run: my-nginx
+  type: LoadBalancer
