@@ -1,5 +1,8 @@
+# Example workflow:
+# docker build -t mynginx .
+# docker run --name mygatsbystack -v `pwd`/public:/usr/share/nginx/html -p 9000:80 mynginx
 FROM nginx:mainline-alpine as builder
-
+MAINTAINER Yohann Pereira <yohann.pereira28@gmail.com>
 ARG ENABLED_MODULES="ndk lua"
 
 RUN set -ex \
