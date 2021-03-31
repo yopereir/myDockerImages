@@ -1,0 +1,15 @@
+version: "3.3"
+services:
+  web:
+    build:
+      context: ./
+      args:
+        ENABLED_MODULES: ndk lua
+    image: mynginx
+    ports:
+      - "8082:8000"
+    networks:
+      - traefik
+networks:
+  traefik:
+    external: true
