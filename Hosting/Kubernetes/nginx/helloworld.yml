@@ -29,7 +29,7 @@ metadata:
 spec:
   ports:
     - name: web
-      port: 6969
+      port: 4200
       targetPort: 8080
       protocol: TCP
   selector:

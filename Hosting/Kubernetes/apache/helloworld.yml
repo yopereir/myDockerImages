@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: load-balancer-example
+  name: hello-world
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: load-balancer-example
+      run: hello-world
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: load-balancer-example
+        run: hello-world
+    spec:
+      containers:
+      - image: httpd:alpine
+        name: hello-world
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: /usr/local/apache2/htdocs/
+          name: webserver-app
+        ports:
+          - containerPort: 80
+      restartPolicy: Always
+      volumes:
+      - name: webserver-app
+        hostPath:
+          path: /host/public
+          type: DirectoryOrCreate
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: apaches-published
+spec:
+  ports:
+    - name: web
+      port: 4200
+      targetPort: 80
+      protocol: TCP
+  selector:
+    run: hello-world
+  type: LoadBalancer
