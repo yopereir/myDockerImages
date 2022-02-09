@@ -1,0 +1,16 @@
+FROM alpine as alpine-with-phpize
+RUN apk update && apk upgrade
+RUN apk add --no-cache php7-pear php7-dev gcc musl-dev make php-openssl php-json git openssl-dev
+RUN git clone https://github.com/mongodb/mongo-php-driver.git
+WORKDIR /mongo-php-driver
+RUN git submodule update --init
+RUN phpize
+RUN ./configure --with-php-config=/usr/bin/php-config --with-mongodb-ssl=openssl
+RUN make 
+RUN make install
+WORKDIR /
+RUN rm -rf mongo-php-driver
+RUN no | pecl install redis
+RUN echo "extension=mongodb.so" > /etc/php7/conf.d/01_mongodb.ini
+RUN echo "extension=redis.so" > /etc/php7/conf.d/01_redis.ini
+RUN php -m

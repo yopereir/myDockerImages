@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    service: webserver
+    app: odoo
+  name: odoo-deployment-webserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: webserver
+      app: odoo
+  template:
+    metadata:
+      labels:
+        service: webserver
+        app: odoo
+    spec:
+      containers:
+      - image: odoo
+        imagePullPolicy: IfNotPresent
+        name: odoo
+        volumeMounts:
+          - name: odoo-webserver-data
+            mountPath: /var/lib/odoo
+        env:
+          - name: HOST
+            value: odoo-service-database
+          - name: USER
+            value: odoo
+          - name: PASSWORD
+            value: odoo
+      volumes:
+        - name: odoo-webserver-data
+          hostPath:
+            path: "/nfsshares$PWD/odoo-data"
+            type: Directory
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    service: database
+    app: odoo
+  name: odoo-deployment-database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: database
+      app: odoo
+  template:
+    metadata:
+      labels:
+        service: database
+        app: odoo
+    spec:
+      containers:
+      - image: postgres
+        imagePullPolicy: IfNotPresent
+        name: postgres
+        volumeMounts:
+          - name: odoo-data
+            mountPath: /var/lib/postgresql/data/
+        env:
+          - name: POSTGRES_DB
+            value: postgres
+          - name: POSTGRES_PASSWORD
+            value: odoo
+          - name: POSTGRES_USER
+            value: odoo
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata
+      volumes:
+        - name: odoo-data
+          emptyDir: {}
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: webserver
+    app: odoo
+  name: odoo-service-webserver
+spec:
+  ports:
+  - port: 8069
+    protocol: TCP
+    targetPort: 8069
+  selector:
+    service: webserver
+    app: odoo
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: database
+    app: odoo
+  name: odoo-service-database
+spec:
+  ports:
+  - port: 5432
+    protocol: TCP
+    targetPort: 5432
+  selector:
+    service: database
+    app: odoo
+  type: NodePort
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  labels:
+    app: odoo
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-body-size: 100m
+  name: odoo-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: odoo.test
+    http:
+      paths:
+      - backend:
+          service:
+            name: odoo-service-webserver
+            port:
+              number: 8069
+        path: /
+        pathType: Prefix
+---
