@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    service: webserver
+    app: erpnext
+  name: erpnext-deployment-webserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: webserver
+      app: erpnext
+  template:
+    metadata:
+      labels:
+        service: webserver
+        app: erpnext
+    spec:
+      containers:
+      - image: erpnext
+        imagePullPolicy: IfNotPresent
+        name: erpnext
+        volumeMounts:
+          - name: erpnext-webserver-data
+            mountPath: /var/lib/erpnext
+        env:
+          - name: HOST
+            value: erpnext-service-database
+          - name: USER
+            value: erpnext
+          - name: PASSWORD
+            value: erpnext
+      volumes:
+        - name: erpnext-webserver-data
+          hostPath:
+            path: "/nfsshares$PWD/erpnext-data"
+            type: Directory
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    service: database
+    app: erpnext
+  name: erpnext-deployment-database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: database
+      app: erpnext
+  template:
+    metadata:
+      labels:
+        service: database
+        app: erpnext
+    spec:
+      containers:
+      - image: postgres
+        imagePullPolicy: IfNotPresent
+        name: postgres
+        volumeMounts:
+          - name: erpnext-data
+            mountPath: /var/lib/postgresql/data/
+        env:
+          - name: POSTGRES_DB
+            value: postgres
+          - name: POSTGRES_PASSWORD
+            value: erpnext
+          - name: POSTGRES_USER
+            value: erpnext
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata
+      volumes:
+        - name: erpnext-data
+          emptyDir: {}
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: webserver
+    app: erpnext
+  name: erpnext-service-webserver
+spec:
+  ports:
+  - port: 8069
+    protocol: TCP
+    targetPort: 8069
+  selector:
+    service: webserver
+    app: erpnext
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: database
+    app: erpnext
+  name: erpnext-service-database
+spec:
+  ports:
+  - port: 5432
+    protocol: TCP
+    targetPort: 5432
+  selector:
+    service: database
+    app: erpnext
+  type: NodePort
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  labels:
+    app: erpnext
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-body-size: 100m
+  name: erpnext-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: erpnext.test
+    http:
+      paths:
+      - backend:
+          service:
+            name: erpnext-service-webserver
+            port:
+              number: 8069
+        path: /
+        pathType: Prefix
+---
