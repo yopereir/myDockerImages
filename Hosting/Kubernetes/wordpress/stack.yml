@@ -1,0 +1,156 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    service: webserver
+    app: wordpress
+  name: wordpress-deployment-webserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: webserver
+      app: wordpress
+  template:
+    metadata:
+      labels:
+        service: webserver
+        app: wordpress
+    spec:
+      containers:
+      - image: wordpress
+        imagePullPolicy: IfNotPresent
+        name: wordpress
+        volumeMounts:
+          - name: wordpress-webserver-data
+            mountPath: /var/www/html
+          - name: wordpress-webserver-themes
+            mountPath: /var/www/html/wp-content/themes
+          - name: wordpress-webserver-plugins
+            mountPath: /var/www/html/wp-content/plugins
+        env:
+          - name: WORDPRESS_DB_HOST
+            value: wordpress-service-database
+          - name: WORDPRESS_DB_USER
+            value: exampleuser
+          - name: WORDPRESS_DB_PASSWORD
+            value: examplepass
+          - name: WORDPRESS_DB_NAME
+            value: exampledb
+      volumes:
+        - name: wordpress-webserver-data
+          hostPath:
+            path: "/nfsshares$PWD/public"
+            type: Directory
+        - name: wordpress-webserver-themes
+          hostPath:
+            path: "/nfsshares$PWD/themes"
+            type: Directory
+        - name: wordpress-webserver-plugins
+          hostPath:
+            path: "/nfsshares$PWD/plugins"
+            type: Directory
+        - name: wordpress-conf
+          configMap:
+            name: wordpress-webserver-conf
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    service: database
+    app: wordpress
+  name: wordpress-deployment-database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: database
+      app: wordpress
+  template:
+    metadata:
+      labels:
+        service: database
+        app: wordpress
+    spec:
+      containers:
+      - image: mysql
+        imagePullPolicy: IfNotPresent
+        name: mysql
+        volumeMounts:
+          - name: wordpress-data
+            mountPath: /var/lib/mysql
+        env:
+          - name: MYSQL_DATABASE
+            value: exampledb
+          - name: MYSQL_USER
+            value: exampleuser
+          - name: MYSQL_PASSWORD
+            value: examplepass
+          - name: MYSQL_RANDOM_ROOT_PASSWORD
+            value: '1'
+      volumes:
+        - name: wordpress-data
+          emptyDir: {}
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: webserver
+    app: wordpress
+  name: wordpress-service-webserver
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 80
+  selector:
+    service: webserver
+    app: wordpress
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: database
+    app: wordpress
+  name: wordpress-service-database
+spec:
+  ports:
+  - port: 3306
+    protocol: TCP
+    targetPort: 3306
+  selector:
+    service: database
+    app: wordpress
+  type: NodePort
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  labels:
+    app: wordpress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-body-size: 100m
+  name: wordpress-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: wordpress.test
+    http:
+      paths:
+      - backend:
+          service:
+            name: wordpress-service-webserver
+            port:
+              number: 8080
+        path: /
+        pathType: Prefix
+---

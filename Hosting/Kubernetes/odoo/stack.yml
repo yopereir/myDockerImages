@@ -25,6 +25,11 @@ spec:
         volumeMounts:
           - name: odoo-webserver-data
             mountPath: /var/lib/odoo
+          - name: odoo-addons
+            mountPath: /mnt/extra-addons
+          - name: odoo-conf
+            mountPath: /etc/odoo/odoo.conf
+            subPath: odoo.conf
         env:
           - name: HOST
             value: odoo-service-database
@@ -34,9 +39,14 @@ spec:
             value: odoo
       volumes:
         - name: odoo-webserver-data
+          emptyDir: {}
+        - name: odoo-addons
           hostPath:
-            path: "/nfsshares$PWD/odoo-data"
+            path: "/nfsshares$PWD/addons"
             type: Directory
+        - name: odoo-conf
+          configMap:
+            name: odoo-webserver-conf
       restartPolicy: Always
 ---
 apiVersion: apps/v1
