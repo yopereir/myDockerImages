@@ -1,4 +1,5 @@
 #!/bin/bash
+# after having minikube installed, simply run `./run-kube.sh -fm`
 mysqlVersion=5.7
 shouldNotUpdate="false"
 localDbUser="root"
