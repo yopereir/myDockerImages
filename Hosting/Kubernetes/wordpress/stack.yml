@@ -81,7 +81,7 @@ spec:
         imagePullPolicy: IfNotPresent
         name: mysql
         volumeMounts:
-          - name: wordpress-data
+          - name: wordpress-database
             mountPath: /var/lib/mysql
         env:
           - name: MYSQL_DATABASE
@@ -93,7 +93,7 @@ spec:
           - name: MYSQL_RANDOM_ROOT_PASSWORD
             value: '1'
       volumes:
-        - name: wordpress-data
+        - name: wordpress-database
           emptyDir: {}
       restartPolicy: Always
 ---
@@ -154,3 +154,29 @@ spec:
         path: /
         pathType: Prefix
 ---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: wordpress-database
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/nfsshares$PWD/database"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wordpress-pv-claim
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 3Gi

@@ -72,6 +72,9 @@ spec:
       containers:
       - image: postgres
         imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: 999
+          allowPrivilegeEscalation: true
         name: postgres
         volumeMounts:
           - name: odoo-data
@@ -147,3 +150,29 @@ spec:
         path: /
         pathType: Prefix
 ---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: odoo-data
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/nfsshares$PWD/database"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: odoo-pv-claim
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 3Gi
