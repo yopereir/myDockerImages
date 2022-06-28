@@ -1,4 +1,3 @@
-
 <?php
 /**
  * Displays the post header
