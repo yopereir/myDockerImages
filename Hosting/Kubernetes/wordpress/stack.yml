@@ -41,15 +41,15 @@ spec:
       volumes:
         - name: wordpress-webserver-data
           hostPath:
-            path: "/nfsshares$PWD/public"
+            path: "/nfsshares$PWD/wordpress-repo/public"
             type: Directory
         - name: wordpress-webserver-themes
           hostPath:
-            path: "/nfsshares$PWD/themes"
+            path: "/nfsshares$PWD/wordpress-repo/themes"
             type: Directory
         - name: wordpress-webserver-plugins
           hostPath:
-            path: "/nfsshares$PWD/plugins"
+            path: "/nfsshares$PWD/wordpress-repo/plugins"
             type: Directory
         - name: wordpress-conf
           configMap:
@@ -95,6 +95,8 @@ spec:
       volumes:
         - name: wordpress-database
           emptyDir: {}
+          #persistentVolumeClaim:
+          #  claimName: wordpress-pv-claim
       restartPolicy: Always
 ---
 apiVersion: v1
@@ -167,7 +169,7 @@ spec:
   accessModes:
     - ReadWriteMany
   hostPath:
-    path: "/nfsshares$PWD/database"
+    path: "/nfsshares$PWD/wordpress-repo/database"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
