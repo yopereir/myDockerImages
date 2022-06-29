@@ -1,0 +1,4 @@
+[submodule "Hosting/Kubernetes/wordpress/wordpress-repo"]
+	path = Hosting/Kubernetes/wordpress/wordpress-repo
+	url = https://github.com/yopereir/backends-wordpress.git
+	branch = master
