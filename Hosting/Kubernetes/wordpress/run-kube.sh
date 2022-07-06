@@ -111,7 +111,7 @@ fi
 
 # Config
 kubectl delete configmap wordpress-webserver-conf --namespace=$stackname
-kubectl create configmap wordpress-webserver-conf --from-file=./wp-config.php --namespace=$stackname
+kubectl create configmap wordpress-webserver-conf --from-file=./wordpress-repo/wp-config.php --namespace=$stackname
 
 # Set dns resolution
 if $(cat /etc/resolver/minikube | grep -q domain);then
