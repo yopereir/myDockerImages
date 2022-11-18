@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    service: database
+    app: mysql
+  name: mysql-deployment-database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: database
+      app: mysql
+  template:
+    metadata:
+      labels:
+        service: database
+        app: mysql
+    spec:
+      containers:
+      - image: mysql
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: 999
+          allowPrivilegeEscalation: true
+        name: mysql
+        volumeMounts:
+          - name: scripts-dir
+            mountPath: /docker-entrypoint-initdb.d
+        env:
+          - name: MYSQL_ALLOW_EMPTY_PASSWORD
+            value: "yes"
+          - name: MYSQL_DATABASE
+            value: sfj_dev
+      volumes:
+        - name: mysql-data
+          emptyDir: {}
+        - name: scripts-dir
+          hostPath:
+            path: /nfsshares$PWD/databases
+            type: DirectoryOrCreate
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: database
+    app: mysql
+  name: mysql-service-database
+spec:
+  ports:
+  - port: 3306
+    protocol: TCP
+    targetPort: 3306
+  selector:
+    service: database
+    app: mysql
+  type: NodePort
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-data
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/nfsshares$PWD/database"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pv-claim
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 3Gi
