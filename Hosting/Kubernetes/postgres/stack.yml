@@ -1,0 +1,93 @@
+# Assuming volume is mounted as: minikube start --addons=ingress,ingress-dns --mount --mount-string $PWD:/minikube-host
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    service: database
+    app: postgres
+  name: postgres-deployment-database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: database
+      app: postgres
+  template:
+    metadata:
+      labels:
+        service: database
+        app: postgres
+    spec:
+      containers:
+      - image: postgres
+        imagePullPolicy: IfNotPresent
+        name: postgres
+        volumeMounts:
+          - name: scripts-dir
+            mountPath: /docker-entrypoint-initdb.d
+          - name: postgres-dir
+            mountPath: /var/lib/postgresql/data/
+        env:
+          - name: POSTGRES_PASSWORD
+            value: test
+          - name: POSTGRES_USER
+            value: root
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata
+          - name: POSTGRES_INITDB_ARGS
+            value: ""
+      volumes:
+        - name: scripts-dir
+          hostPath:
+            path: "/minikube-host/init-scripts"
+            type: DirectoryOrCreate
+        - name: postgres-dir
+          hostPath:
+            path: "/minikube-host/databases/"
+            type: DirectoryOrCreate
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: database
+    app: postgres
+  name: postgres-service-database
+spec:
+  ports:
+  - port: 3306
+    protocol: TCP
+    targetPort: 3306
+  selector:
+    service: database
+    app: postgres
+  type: NodePort
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgres-data
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/minikube-host/database-pv"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pv-claim
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 3Gi
