@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    app: huginn
+  name: huginn-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: huginn
+  template:
+    metadata:
+      labels:
+        app: huginn
+    spec:
+      containers:
+      - image: huginn/huginn
+        imagePullPolicy: IfNotPresent
+        name: huginn
+        env:
+        - name: DATABASE_ADAPTER
+          value: "postgresql"
+        - name: DATABASE_HOST
+          value: "postgres-service-database"
+        - name: DATABASE_PORT
+          value: "5432"
+        - name: DATABASE_USERNAME
+          value: "root"
+        - name: DATABASE_PASSWORD
+          value: "test"
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: huginn
+  name: huginn-service
+spec:
+  ports:
+  - port: 3000
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    app: huginn
+  type: NodePort
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  labels:
+    app: huginn
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  name: huginn-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: huginn.test
+    http:
+      paths:
+      - backend:
+          service:
+            name: huginn-service
+            port:
+              number: 3000
+        path: /
+        pathType: Prefix

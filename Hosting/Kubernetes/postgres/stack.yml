@@ -57,9 +57,9 @@ metadata:
   name: postgres-service-database
 spec:
   ports:
-  - port: 3306
+  - port: 5432
     protocol: TCP
-    targetPort: 3306
+    targetPort: 5432
   selector:
     service: database
     app: postgres
