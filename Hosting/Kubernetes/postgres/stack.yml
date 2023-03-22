@@ -1,4 +1,4 @@
-# Assuming volume is mounted as: minikube start --addons=ingress,ingress-dns --mount --mount-string $PWD:/minikube-host
+# Assuming volume is mounted as: minikube start --addons=ingress,ingress-dns --mount --mount-string $PWD:/minikube-host$PWD
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -40,11 +40,11 @@ spec:
       volumes:
         - name: scripts-dir
           hostPath:
-            path: "/minikube-host/init-scripts"
+            path: "/minikube-host$PWD/init-scripts"
             type: DirectoryOrCreate
         - name: postgres-dir
           hostPath:
-            path: "/minikube-host/databases/"
+            path: "/minikube-host$PWD/databases/"
             type: DirectoryOrCreate
       restartPolicy: Always
 ---
@@ -78,7 +78,7 @@ spec:
   accessModes:
     - ReadWriteMany
   hostPath:
-    path: "/minikube-host/database-pv"
+    path: "/minikube-host$PWD/database-pv"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
