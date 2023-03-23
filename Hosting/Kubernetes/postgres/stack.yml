@@ -1,4 +1,4 @@
-# Assuming volume is mounted as: minikube start --addons=ingress,ingress-dns --mount --mount-string $PWD:/minikube-host$PWD
+# Assuming volume is mounted as: minikube start --addons=ingress,ingress-dns --mount --mount-string $HOME:/minikube-host$HOME
 apiVersion: apps/v1
 kind: Deployment
 metadata:
