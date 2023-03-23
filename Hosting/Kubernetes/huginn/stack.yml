@@ -16,7 +16,7 @@ spec:
         app: huginn
     spec:
       containers:
-      - image: huginn/huginn
+      - image: ghcr.io/huginn/huginn
         imagePullPolicy: IfNotPresent
         name: huginn
         env:
@@ -45,7 +45,7 @@ spec:
     targetPort: 3000
   selector:
     app: huginn
-  type: NodePort
+  type: LoadBalancer
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
