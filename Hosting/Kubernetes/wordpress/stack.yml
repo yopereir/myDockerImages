@@ -94,9 +94,12 @@ spec:
             value: '1'
       volumes:
         - name: wordpress-database
-          emptyDir: {}
-          #persistentVolumeClaim:
-          #  claimName: wordpress-pv-claim
+          persistentVolumeClaim:
+            claimName: wordpress-pv-claim
+      securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
       restartPolicy: Always
 ---
 apiVersion: v1
@@ -163,22 +166,23 @@ metadata:
   labels:
     type: local
 spec:
-  storageClassName: manual
+  storageClassName: local-path
   capacity:
-    storage: 10Gi
+    storage: 3Gi
   accessModes:
-    - ReadWriteMany
+    -  ReadWriteOnce
   hostPath:
     path: "$PWD/wordpress-repo/database"
+  persistentVolumeReclaimPolicy: Retain
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: wordpress-pv-claim
 spec:
-  storageClassName: manual
+  storageClassName: local-path
   accessModes:
-    - ReadWriteMany
+    -  ReadWriteOnce
   resources:
     requests:
       storage: 3Gi

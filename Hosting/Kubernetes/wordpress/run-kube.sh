@@ -194,5 +194,5 @@ fi
 
 # Deploy stack
 export HOST_IP=$(ipconfig getifaddr en0) && envsubst < stack.yml | kubectl apply -f - --namespace=$stackname
-sleep 3s
+sleep 3
 export HOST_IP=$(ipconfig getifaddr en0) && envsubst < stack.yml | kubectl apply -f - --namespace=$stackname
