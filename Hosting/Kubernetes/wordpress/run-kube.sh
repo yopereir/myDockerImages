@@ -1,5 +1,5 @@
 #!/bin/bash
-# after having minikube installed, simply run `./run-kube.sh -fm`
+# after having rancher installed and running, simply run `./run-kube.sh -fn`
 mysqlVersion=5.7
 shouldNotUpdate="false"
 localDbUser="root"
@@ -10,10 +10,9 @@ localDbHost="%"
 DB_NAME=""
 DB_PASSWORD=""
 DB_USER=""
-freshMinikube=false
+ingress=false
 freshNamespace=false
 freshSecrets=false
-freshDashboard=false
 while test $# -gt 0; do
   case "$1" in
     -h|--help)
@@ -23,19 +22,20 @@ while test $# -gt 0; do
       echo " "
       echo "options:"
       echo "-h, --help                 show this help message"
-      echo "-fm,                       bool to know if fresh instance of minikube should be used"
+      echo "--no-update                skips updating local database with remote"
+      echo "-e, --env=dev/loc          specify environment to use (dev/loc)"
+      echo "-u, --user=STRING          username for database (root)"
+      echo "-p, --password=STRING      pasword for database, default blank"
+      echo "-n, --name=STRING          name of the database, defaults to using dev name"
+      echo "-i, --ingress              bool to know if new ingress controller should be used"
       echo "-fn,                       bool to know if fresh instance of namespace should be used"
       echo "-fs,                       bool to know if fresh instance of secrets should be used"
-      echo "-fd,                       bool to know if fresh instance of dashboard should be used"
-      echo "-fdn|-fnd,                 bool to know if fresh instance of namespace AND dashboard should be used"
-      echo "-fds|-fsd,                 bool to know if fresh instance of secret AND dashboard should be used"
+      echo "-v, --version=NUMBER       specify a version of mysql to use"
       exit 0
       ;;
-    -fm)
-      freshMinikube=true
-      echo "Current minikube instance will be deleted and new instance will be created."
-      freshDashboard=true
-      echo "Current dashboard instance will be deleted and new instance will be created."
+    -i|--ingress)
+      ingress=true
+      echo "Ingress controller will be installed and port-forwarded to 80."
       shift
       ;;
     -fn)
@@ -48,23 +48,113 @@ while test $# -gt 0; do
       echo "Current secrets instance will be deleted and new instance will be created."
       shift
       ;;
-    -fd)
-      freshDashboard=true
-      echo "Current dashboard instance will be deleted and new instance will be created."
+    --no-update)
+      shouldNotUpdate="true"
+      echo "Local database won't be updated"
       shift
       ;;
-    -fdn|-fnd)
-      freshDashboard=true
-      echo "Current dashboard instance will be deleted and new instance will be created."
-      freshNamespace=true
-      echo "Current namespace instance will be deleted and new instance will be created."
+    -e)
+      shift
+      if test $# -gt 0; then
+        env=$1
+        echo "Using environment: $env"
+      else
+        echo "No environment specified. Using default environment: $env"
+        break
+      fi
       shift
       ;;
-    -fds|-fsd)
-      freshDashboard=true
-      echo "Current dashboard instance will be deleted and new instance will be created."
-      freshSecrets=true
-      echo "Current secrets instance will be deleted and new instance will be created."
+    --env*)
+      if [[ `echo $1 | sed -e 's/^[^=]*=//g'` != "" ]]; then
+        env=`echo $1 | sed -e 's/^[^=]*=//g'`
+        echo "Using environment: $env"
+      else
+        echo "No environment specified. Using default environment: $env"
+        break
+      fi
+      shift
+      ;;
+    -u)
+      shift
+      if test $# -gt 0; then
+        localDbUser=$1
+        echo "Username: $localDbUser"
+      else
+        echo "No username specified. Using default username: $localDbUser"
+        break
+      fi
+      shift
+      ;;
+    --user*)
+      if [[ `echo $1 | sed -e 's/^[^=]*=//g'` != "" ]]; then
+        env=`echo $1 | sed -e 's/^[^=]*=//g'`
+        echo "Username: $localDbUser"
+      else
+        echo "No username specified. Using default username: $localDbUser"
+        break
+      fi
+      shift
+      ;;
+    -p)
+      shift
+      if test $# -gt 0; then
+        localDbPassword=$1
+        echo "Using password: $localDbPassword"
+      else
+        echo "No password specified. Using default password: $localDbPassword"
+        break
+      fi
+      shift
+      ;;
+    --password*)
+      if [[ `echo $1 | sed -e 's/^[^=]*=//g'` != "" ]]; then
+        localDbPassword=`echo $1 | sed -e 's/^[^=]*=//g'`
+        echo "Using password: $localDbPassword"
+      else
+        echo "No password specified. Using default password: $localDbPassword"
+        break
+      fi
+      shift
+      ;;
+    -n)
+      shift
+      if test $# -gt 0; then
+        localDbName=$1
+        echo "Using database name: $localDbName"
+      else
+        echo "No database name specified. Using default name: $localDbName"
+        break
+      fi
+      shift
+      ;;
+    --name*)
+      if [[ `echo $1 | sed -e 's/^[^=]*=//g'` != "" ]]; then
+        localDbName=`echo $1 | sed -e 's/^[^=]*=//g'`
+        echo "Using database name: $localDbName"
+      else
+        echo "No database name specified. Using default name: $localDbName"
+        break
+      fi
+      shift
+      ;;
+    -v)
+      shift
+      if test $# -gt 0; then
+        mysqlVersion=$1
+        echo "Using mysql version: $mysqlVersion"
+      else
+        echo "No verison specified. Using default version: $mysqlVersion"
+        break
+      fi
+      shift
+      ;;
+    --version*)
+      if [[ `echo $1 | sed -e 's/^[^=]*=//g'` != "" ]]; then
+        mysqlVersion=`echo $1 | sed -e 's/^[^=]*=//g'`
+      else
+        echo "No verison specified. Using default version: $mysqlVersion"
+        break
+      fi
       shift
       ;;
     *)
@@ -73,31 +163,13 @@ while test $# -gt 0; do
   esac
 done
 stackname='wordpress-test'
-arr=['configs','secrets','volumes']
-hash=$(git rev-parse --short HEAD)
-
-# Start minikube
-if [ $freshMinikube = true ]; then 
-minikube delete --all --purge
-fi
-echo "Checking if minikube is running."
-if [ "$(minikube status -f {{.Host}})" != 'Running' ]; then
-echo "minikube is not running.  Starting minikube."
-minikube start --feature-gates="IPv6DualStack=false" --cpus 8 --memory 8192  --addons=ingress,ingress-dns --driver=hyperkit --nfs-share ${PWD%$(echo ${PWD##*/})*}
+# Start ingress
+if [ $ingress = true ]; then 
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.1.2/deploy/static/provider/cloud/deploy.yaml
+sleep 20
 kubectl delete -A ValidatingWebhookConfiguration ingress-nginx-admission
-eval $(minikube docker-env)
-fi
-
-# Minikube dashboard
-processIds=$(lsof -iTCP -sTCP:LISTEN -P | grep kubectl | cut -d ' ' -f4)
-if [[ $processIds != '' && $freshDashboard == false ]];then
-echo "Using existing dashboard";
-else
-for id in $processIds;do
-kill $id
-done
-echo "Creating dashboard"
-minikube dashboard &
+sudo kubectl port-forward --namespace=ingress-nginx service/ingress-nginx-controller 80:80
+exit 0
 fi
 
 # Namespace
@@ -114,20 +186,10 @@ kubectl delete configmap wordpress-webserver-conf --namespace=$stackname
 kubectl create configmap wordpress-webserver-conf --from-file=./wordpress-repo/wp-config.php --namespace=$stackname
 
 # Set dns resolution
-if $(cat /etc/resolver/minikube | grep -q domain);then
- sudo sed -i -e "s/.*domain.*/$(echo "domain test")/" /etc/resolver/minikube;
+if $(cat /etc/hosts | grep -q wordpress.test);then
+ sudo sed -i -e "s/.*wordpress.test.*/$(echo "127.0.0.1 wordpress.test")/" /etc/hosts;
  else 
- echo "domain test" | sudo tee -a /etc/resolver/minikube;
-fi
-if $(cat /etc/resolver/minikube | grep -q nameserver);then
- sudo sed -i -e "s/.*nameserver.*/$(echo "nameserver `minikube ip`")/" /etc/resolver/minikube;
- else 
- echo "nameserver `minikube ip`" | sudo tee -a /etc/resolver/minikube;
-fi
-if $(cat /etc/hosts | grep -q minikube);then
- sudo sed -i -e "s/.*minikube.*/$(echo "`minikube ip` minikube")/" /etc/hosts;
- else 
- echo "`minikube ip` minikube" | sudo tee -a /etc/hosts;
+ echo "127.0.0.1 wordpress.test" | sudo tee -a /etc/hosts;
 fi
 
 # Deploy stack

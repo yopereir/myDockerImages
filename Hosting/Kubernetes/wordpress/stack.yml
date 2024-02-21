@@ -41,15 +41,15 @@ spec:
       volumes:
         - name: wordpress-webserver-data
           hostPath:
-            path: "/nfsshares$PWD/wordpress-repo/public"
+            path: "$PWD/wordpress-repo/public"
             type: Directory
         - name: wordpress-webserver-themes
           hostPath:
-            path: "/nfsshares$PWD/wordpress-repo/themes"
+            path: "$PWD/wordpress-repo/themes"
             type: Directory
         - name: wordpress-webserver-plugins
           hostPath:
-            path: "/nfsshares$PWD/wordpress-repo/plugins"
+            path: "$PWD/wordpress-repo/plugins"
             type: Directory
         - name: wordpress-conf
           configMap:
@@ -108,7 +108,7 @@ metadata:
   name: wordpress-service-webserver
 spec:
   ports:
-  - port: 8080
+  - port: 80
     protocol: TCP
     targetPort: 80
   selector:
@@ -152,7 +152,7 @@ spec:
           service:
             name: wordpress-service-webserver
             port:
-              number: 8080
+              number: 80
         path: /
         pathType: Prefix
 ---
@@ -169,7 +169,7 @@ spec:
   accessModes:
     - ReadWriteMany
   hostPath:
-    path: "/nfsshares$PWD/wordpress-repo/database"
+    path: "$PWD/wordpress-repo/database"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
